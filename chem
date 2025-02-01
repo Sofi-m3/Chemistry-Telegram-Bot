@@ -1,0 +1,459 @@
+import telebot
+from telebot import types
+import re
+
+
+bot = telebot.TeleBot('7608703327:AAGJLSJClBu67vEThRMOpzCW6QCGteWKPf8')
+
+# Создаем клавиатуру
+mm = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+button1 = types.KeyboardButton("Узнать информацию об элементе")
+button2 = types.KeyboardButton("Молекулярная масса")
+button3 = types.KeyboardButton("Атомная доля")
+button4 = types.KeyboardButton("Валентность")
+button5 = types.KeyboardButton("Атомная структура")
+button6 = types.KeyboardButton("Электронная конфигурация")
+button7 = types.KeyboardButton("Степень окисления")
+
+mm.add(button1, button2, button3, button4, button5, button6, button7)
+
+# Химические данные
+elements = {
+    'H': {'Name_el': 'Водород', 'Numb_el': 1, 'Massa_el': 1, 'metal': False},
+    'He': {'Name_el': 'Гелий', 'Numb_el': 2, 'Massa_el': 4, 'metal': False},
+    'Li': {'Name_el': 'Литий', 'Numb_el': 3, 'Massa_el': 7, 'metal': True},
+    'Be': {'Name_el': 'Бериллий', 'Numb_el': 4, 'Massa_el': 9, 'metal': True},
+    'B': {'Name_el': 'Бор', 'Numb_el': 5, 'Massa_el': 11, 'metal': False},
+    'C': {'Name_el': 'Углерод', 'Numb_el': 6, 'Massa_el': 12, 'metal': False},
+    'N': {'Name_el': 'Азот', 'Numb_el': 7, 'Massa_el': 14, 'metal': False},
+    'O': {'Name_el': 'Кислород', 'Numb_el': 8, 'Massa_el': 16, 'metal': False},
+    'F': {'Name_el': 'Фтор', 'Numb_el': 9, 'Massa_el': 19, 'metal': False},
+    'Ne': {'Name_el': 'Неон', 'Numb_el': 10, 'Massa_el': 20, 'metal': False},
+    'Na': {'Name_el': 'Натрий', 'Numb_el': 11, 'Massa_el': 23, 'metal': True},
+    'Mg': {'Name_el': 'Магний', 'Numb_el': 12, 'Massa_el': 24, 'metal': True},
+    'Al': {'Name_el': 'Алюминий', 'Numb_el': 13, 'Massa_el': 27, 'metal': True},
+    'Si': {'Name_el': 'Кремний', 'Numb_el': 14, 'Massa_el': 28, 'metal': False},
+    'P': {'Name_el': 'Фосфор', 'Numb_el': 15, 'Massa_el': 31, 'metal': False},
+    'S': {'Name_el': 'Сера', 'Numb_el': 16, 'Massa_el': 32, 'metal': False},
+    'Cl': {'Name_el': 'Хлор', 'Numb_el': 17, 'Massa_el': 35.5, 'metal': False},
+    'Ar': {'Name_el': 'Аргон', 'Numb_el': 18, 'Massa_el': 40, 'metal': False},
+    'K': {'Name_el': 'Калий', 'Numb_el': 19, 'Massa_el': 39, 'metal': True},
+    'Ca': {'Name_el': 'Кальций', 'Numb_el': 20, 'Massa_el': 40, 'metal': True},
+    'Sc': {'Name_el': 'Скандий', 'Numb_el': 21, 'Massa_el': 45, 'metal': True},
+    'Ti': {'Name_el': 'Титан', 'Numb_el': 22, 'Massa_el': 48, 'metal': True},
+    'V': {'Name_el': 'Ванадий', 'Numb_el': 23, 'Massa_el': 51, 'metal': True},
+    'Cr': {'Name_el': 'Хром', 'Numb_el': 24, 'Massa_el': 52, 'metal': True},
+    'Mn': {'Name_el': 'Марганец', 'Numb_el': 25, 'Massa_el': 55, 'metal': True},
+    'Fe': {'Name_el': 'Железо', 'Numb_el': 26, 'Massa_el': 56, 'metal': True},
+    'Co': {'Name_el': 'Кобальт', 'Numb_el': 27, 'Massa_el': 59, 'metal': True},
+    'Ni': {'Name_el': 'Никель', 'Numb_el': 28, 'Massa_el': 59, 'metal': True},
+    'Cu': {'Name_el': 'Медь', 'Numb_el': 29, 'Massa_el': 64, 'metal': True},
+    'Zn': {'Name_el': 'Цинк', 'Numb_el': 30, 'Massa_el': 65, 'metal': True},
+    'Ga': {'Name_el': 'Галлий', 'Numb_el': 31, 'Massa_el': 70, 'metal': True},
+    'Ge': {'Name_el': 'Германий', 'Numb_el': 32, 'Massa_el': 73, 'metal': False},
+    'As': {'Name_el': 'Мышьяк', 'Numb_el': 33, 'Massa_el': 75, 'metal': False},
+    'Se': {'Name_el': 'Селен', 'Numb_el': 34, 'Massa_el': 79, 'metal': False},
+    'Br': {'Name_el': 'Бром', 'Numb_el': 35, 'Massa_el': 80, 'metal': False},
+    'Kr': {'Name_el': 'Криптон', 'Numb_el': 36, 'Massa_el': 84, 'metal': False},
+    'Rb': {'Name_el': 'Рубидий', 'Numb_el': 37, 'Massa_el': 85, 'metal': True},
+    'Sr': {'Name_el': 'Стронций', 'Numb_el': 38, 'Massa_el': 88, 'metal': True},
+    'Y': {'Name_el': 'Иттрий', 'Numb_el': 39, 'Massa_el': 89, 'metal': True},
+    'Zr': {'Name_el': 'Цирконий', 'Numb_el': 40, 'Massa_el': 91, 'metal': True},
+    'Nb': {'Name_el': 'Ниобий', 'Numb_el': 41, 'Massa_el': 93, 'metal': True},
+    'Mo': {'Name_el': 'Молибден', 'Numb_el': 42, 'Massa_el': 96, 'metal': True},
+    'Tc': {'Name_el': 'Технеций', 'Numb_el': 43, 'Massa_el': 98, 'metal': True},
+    'Ru': {'Name_el': 'Рутений', 'Numb_el': 44, 'Massa_el': 101, 'metal': True},
+    'Rh': {'Name_el': 'Родий', 'Numb_el': 45, 'Massa_el': 103, 'metal': True},
+    'Pd': {'Name_el': 'Палладий', 'Numb_el': 46, 'Massa_el': 106, 'metal': True},
+    'Ag': {'Name_el': 'Серебро', 'Numb_el': 47, 'Massa_el': 108, 'metal': True},
+    'Cd': {'Name_el': 'Кадмий', 'Numb_el': 48, 'Massa_el': 112, 'metal': True},
+    'In': {'Name_el': 'Индий', 'Numb_el': 49, 'Massa_el': 115, 'metal': True},
+    'Sn': {'Name_el': 'Олово', 'Numb_el': 50, 'Massa_el': 119, 'metal': True},
+    'Sb': {'Name_el': 'Сурьма', 'Numb_el': 51, 'Massa_el': 122, 'metal': False},
+    'Te': {'Name_el': 'Теллур', 'Numb_el': 52, 'Massa_el': 128, 'metal': False},
+    'I': {'Name_el': 'Йод', 'Numb_el': 53, 'Massa_el': 127, 'metal': False},
+    'Xe': {'Name_el': 'Ксенон', 'Numb_el': 54, 'Massa_el': 131, 'metal': False},
+    'Cs': {'Name_el': 'Цезий', 'Numb_el': 55, 'Massa_el': 133, 'metal': True},
+    'Ba': {'Name_el': 'Барий', 'Numb_el': 56, 'Massa_el': 137, 'metal': True},
+    'La': {'Name_el': 'Лантан', 'Numb_el': 57, 'Massa_el': 139, 'metal': True},
+    'Ce': {'Name_el': 'Церий', 'Numb_el': 58, 'Massa_el': 140, 'metal': True},
+    'Pr': {'Name_el': 'Празеодим', 'Numb_el': 59, 'Massa_el': 141, 'metal': True},
+    'Nd': {'Name_el': 'Неодим', 'Numb_el': 60, 'Massa_el': 144, 'metal': True},
+    'Pm': {'Name_el': 'Прометий', 'Numb_el': 61, 'Massa_el': 145, 'metal': True},
+    'Sm': {'Name_el': 'Самарий', 'Numb_el': 62, 'Massa_el': 150, 'metal': True},
+    'Eu': {'Name_el': 'Европий', 'Numb_el': 63, 'Massa_el': 152, 'metal': True},
+    'Gd': {'Name_el': 'Гадолиний', 'Numb_el': 64, 'Massa_el': 157, 'metal': True},
+    'Tb': {'Name_el': 'Тербий', 'Numb_el': 65, 'Massa_el': 159, 'metal': True},
+    'Dy': {'Name_el': 'Диспрозий', 'Numb_el': 66, 'Massa_el': 163, 'metal': True},
+    'Ho': {'Name_el': 'Гольмий', 'Numb_el': 67, 'Massa_el': 165, 'metal': True},
+    'Er': {'Name_el': 'Эрбий', 'Numb_el': 68, 'Massa_el': 167, 'metal': True},
+    'Tm': {'Name_el': 'Тулий', 'Numb_el': 69, 'Massa_el': 169, 'metal': True},
+    'Yb': {'Name_el': 'Иттербий', 'Numb_el': 70, 'Massa_el': 173, 'metal': True},
+    'Lu': {'Name_el': 'Лютеций', 'Numb_el': 71, 'Massa_el': 175, 'metal': True},
+    'Hf': {'Name_el': 'Гафний', 'Numb_el': 72, 'Massa_el': 178, 'metal': True},
+    'Ta': {'Name_el': 'Тантал', 'Numb_el': 73, 'Massa_el': 181, 'metal': True},
+    'W': {'Name_el': 'Вольфрам', 'Numb_el': 74, 'Massa_el': 184, 'metal': True},
+    'Re': {'Name_el': 'Рений', 'Numb_el': 75, 'Massa_el': 186, 'metal': True},
+    'Os': {'Name_el': 'Осмий', 'Numb_el': 76, 'Massa_el': 190, 'metal': True},
+    'Ir': {'Name_el': 'Иридий', 'Numb_el': 77, 'Massa_el': 192, 'metal': True},
+    'Pt': {'Name_el': 'Платина', 'Numb_el': 78, 'Massa_el': 195, 'metal': True},
+    'Au': {'Name_el': 'Золото', 'Numb_el': 79, 'Massa_el': 197, 'metal': True},
+    'Hg': {'Name_el': 'Ртуть', 'Numb_el': 80, 'Massa_el': 201, 'metal': True},
+    'Tl': {'Name_el': 'Таллий', 'Numb_el': 81, 'Massa_el': 204, 'metal': True},
+    'Pb': {'Name_el': 'Свинец', 'Numb_el': 82, 'Massa_el': 207, 'metal': True},
+    'Bi': {'Name_el': 'Висмут', 'Numb_el': 83, 'Massa_el': 209, 'metal': True},
+    'Po': {'Name_el': 'Полоний', 'Numb_el': 84, 'Massa_el': 209, 'metal': False},
+    'At': {'Name_el': 'Астат', 'Numb_el': 85, 'Massa_el': 210, 'metal': False},
+    'Rn': {'Name_el': 'Радон', 'Numb_el': 86, 'Massa_el': 222, 'metal': False},
+    'Fr': {'Name_el': 'Франций', 'Numb_el': 87, 'Massa_el': 223, 'metal': True},
+    'Ra': {'Name_el': 'Радий', 'Numb_el': 88, 'Massa_el': 226, 'metal': True},
+    'Ac': {'Name_el': 'Актиний', 'Numb_el': 89, 'Massa_el': 227, 'metal': True},
+    'Th': {'Name_el': 'Торий', 'Numb_el': 90, 'Massa_el': 232, 'metal': True},
+    'Pa': {'Name_el': 'Протактиний', 'Numb_el': 91, 'Massa_el': 231, 'metal': True},
+    'U': {'Name_el': 'Уран', 'Numb_el': 92, 'Massa_el': 238, 'metal': True},
+    'Np': {'Name_el': 'Нептуний', 'Numb_el': 93, 'Massa_el': 237, 'metal': True},
+    'Pu': {'Name_el': 'Плутоний', 'Numb_el': 94, 'Massa_el': 244, 'metal': True},
+    'Am': {'Name_el': 'Америций', 'Numb_el': 95, 'Massa_el': 243, 'metal': True},
+    'Cm': {'Name_el': 'Кюрий', 'Numb_el': 96, 'Massa_el': 247, 'metal': True},
+    'Bk': {'Name_el': 'Берклий', 'Numb_el': 97, 'Massa_el': 247, 'metal': True},
+    'Cf': {'Name_el': 'Калифорний', 'Numb_el': 98, 'Massa_el': 251, 'metal': True},
+    'Es': {'Name_el': 'Эйнштейний', 'Numb_el': 99, 'Massa_el': 252, 'metal': True},
+    'Fm': {'Name_el': 'Фермий', 'Numb_el': 100, 'Massa_el': 257, 'metal': True},
+    'Md': {'Name_el': 'Менделевий', 'Numb_el': 101, 'Massa_el': 258, 'metal': True},
+    'No': {'Name_el': 'Нобелий', 'Numb_el': 102, 'Massa_el': 259, 'metal': True},
+    'Lr': {'Name_el': 'Лоуренсий', 'Numb_el': 103, 'Massa_el': 262, 'metal': True},
+    'Rf': {'Name_el': 'Резерфордий', 'Numb_el': 104, 'Massa_el': 267, 'metal': True},
+    'Db': {'Name_el': 'Дубний', 'Numb_el': 105, 'Massa_el': 270, 'metal': True},
+    'Sg': {'Name_el': 'Сиборгий', 'Numb_el': 106, 'Massa_el': 271, 'metal': True},
+    'Bh': {'Name_el': 'Борий', 'Numb_el': 107, 'Massa_el': 270, 'metal': True},
+    'Hs': {'Name_el': 'Хассий', 'Numb_el': 108, 'Massa_el': 277, 'metal': True},
+    'Mt': {'Name_el': 'Мейтнерий', 'Numb_el': 109, 'Massa_el': 276, 'metal': True},
+    'Ds': {'Name_el': 'Дармштадтий', 'Numb_el': 110, 'Massa_el': 281, 'metal': True}}
+
+Valentnost = {'1' : ['H', 'I', 'Li', 'Na', 'K'], '2':['Be', 'Mg', 'Ca', 'Sr', 'Ba', 'Ra', 'Zn', 'O'], '3':['B', 'Al']}
+constant_dergree = {'1' : ['Fr', 'Cs', 'Rb', 'Li', 'Na', 'K'], '2':['Be', 'Mg', 'Ca', 'Sr', 'Ba', 'Ra', 'Zn', 'O'], '3':['B', 'Al'], '-1': ['F']}
+
+
+el_config = {
+    'H': '1s1',
+    'He': '1s2',
+    'Li': '1s2 2s1',
+    'Be': '1s2 2s2',
+    'B': '1s2 2s2 2p1',
+    'C': '1s2 2s2 2p2',
+    'N': '1s2 2s2 2p3',
+    'O': '1s2 2s2 2p4',
+    'F': '1s2 2s2 2p5',
+    'Ne': '1s2 2s2 2p6',
+    'Na': '1s2 2s2 2p6 3s1',
+    'Mg': '1s2 2s2 2p6 3s2',
+    'Al': '1s2 2s2 2p6 3s2 3p1',
+    'Si': '1s2 2s2 2p6 3s2 3p2',
+    'P': '1s2 2s2 2p6 3s2 3p3',
+    'S': '1s2 2s2 2p6 3s2 3p4',
+    'Cl': '1s2 2s2 2p6 3s2 3p5',
+    'Ar': '1s2 2s2 2p6 3s2 3p6',
+    'K': '1s2 2s2 2p6 3s2 3p6 4s1',
+    'Ca': '1s2 2s2 2p6 3s2 3p6 4s2',
+    'Cm': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f8',
+    'Bk': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f9',
+    'Cf': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f10',
+    'Es': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f11',
+    'Fm': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f12',
+    'Md': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f13',
+    'No': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14',
+    'Lr': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d1',
+    'Rf': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d2',
+    'Db': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d3',
+    'Sg': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d4',
+    'Bh': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d5',
+    'Hs': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d6',
+    'Mt': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d7',
+    'Ds': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d8',
+    'Rg': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d9',
+    'Cn': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d10',
+    'Nh': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d11',
+    'Fl': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d12',
+    'Mc': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d13',
+    'Lv': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d14',
+    'Ts': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d15',
+    'Og': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d16'
+}
+element_symbols = [
+    'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
+    'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca',
+    'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
+    'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr',
+    'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
+    'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd',
+    'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb',
+    'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
+    'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th',
+    'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm',
+    'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds',
+    'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og'
+]
+
+# Функции для расчетов
+def parse_formula(formula):
+    elements_list = []
+    index = 0
+    while index < len(formula):
+        matched_symbol = ''
+        for symbol in element_symbols:
+            if formula[index:].startswith(symbol):
+                if len(symbol) > len(matched_symbol):
+                    matched_symbol = symbol
+        if matched_symbol:
+            element = matched_symbol
+            index += len(matched_symbol)
+            count = ''
+            while index < len(formula) and formula[index].isdigit():
+                count += formula[index]
+                index += 1
+            count = int(count) if count else 1
+            elements_list.append({
+                'element': element,
+                'index': count,
+            })
+        else:
+            index += 1
+    return elements_list
+
+def count_molecular_mass(form):
+    molecular_m = 0.0
+    formula = parse_formula(form)
+    for i in formula:
+        el = i['element']
+        molecular_m += elements[el]['Massa_el'] * i['index']
+    return molecular_m
+
+def molecular_mass(form):
+    mass = count_molecular_mass(form)
+    return f'Молекулярная масса {form} = {mass} а.е.м.'
+
+
+
+def atomic_fraction(formula):
+    parsed = parse_formula(formula)
+    total_mass = count_molecular_mass(formula)
+    result = []
+    for elem in parsed:
+        element = elem['element']
+        count = elem['index']
+        mass = elements[element]['Massa_el'] * count
+        fraction = (mass / total_mass) * 100
+        result.append(f'Атомная доля {element}: {round(fraction, 2)}%')
+    return '\n'.join(result)
+
+def get_inform(el):
+    try:
+        el_num = int(el)
+        el_symbol = element_symbols[el_num - 1]
+    except ValueError:
+        el_symbol = el.strip().capitalize()
+    except IndexError:
+        return "Элемент не найден"
+    
+    if el_symbol not in elements:
+        return "Элемент не найден"
+    
+    data = elements[el_symbol]
+    metal = 'металл' if data['metal'] else 'неметалл'
+    return (
+        f"Элемент: {el_symbol}\n"
+        f"Название: {data['Name_el']}\n"
+        f"Атомный номер: {data['Numb_el']}\n"
+        f"Атомная масса: {data['Massa_el']}\n"
+        f"Тип: {metal}"
+    )
+
+
+def valentnost(formula):
+    form = parse_formula(formula)
+    if form[0]['element'] in Valentnost['1'] or form[0]['element'] in Valentnost['2'] or form[0]['element'] in Valentnost['3']:
+        if form[0]['element'] in Valentnost['1']:
+            v_p = 1
+            val = form[0]['index']//form[1]['index']
+        if form[0]['element'] in Valentnost['2']:
+            val = (form[0]['index']*2)//form[1]['index']
+            v_p = 2
+        if form[0]['element'] in Valentnost['3']:
+            v_p = 3
+            val = (form[0]['index']*3)//form[1]['index']
+            
+        return f"Валентность {form[0]['element']} - {v_p}. Валентность {form[1]['element']} - {val}"
+    
+    if form[1]['element'] in Valentnost['1'] or form[1]['element'] in Valentnost['2'] or form[1]['element'] in Valentnost['3']:
+        if form[1]['element'] in Valentnost['1']:
+            v_p = 1
+            val = form[1]['index']//form[0]['index']
+        if form[1]['element'] in Valentnost['2']:
+            val = (form[1]['index']*2)//form[0]['index']
+            v_p = 2
+        if form[1]['element'] in Valentnost['3']:
+            v_p = 3
+            val = (form[1]['index']*3)//form[0]['index']
+        return f"Валентность {form[1]['element']} - {v_p}. Валентность {form[0]['element']} - {val}"
+        
+def degree_of_oxidation(form):
+    form = parse_formula(form)
+    if len(form) ==1 :
+        return f"Степень окисления {form[0]['element']} = 0"
+    elif len(form) == 2:
+        if form[0]['element'] in constant_dergree['1'] or form[0]['element'] in constant_dergree['2'] or form[0]['element'] in constant_dergree['3']:
+            if form[0]['element'] in constant_dergree['1']:
+                d_o = 1
+                d_o_2 = (0-form[0]['index'])//form[1]['index']
+            if form[0]['element'] in constant_dergree['2']:
+                d_o_2 = (0 - form[0]['index']*2)//form[1]['index']
+                d_o = 2
+            if form[0]['element'] in constant_dergree['3']:
+                d_o = 3
+                d_o_2 = (0 - form[0]['index']*3)//form[1]['index']
+            if form[0]['element'] in constant_dergree['-1']:
+                d_o = -1
+                d_o_2 = (0 - form[0]['index']*-1)//form[1]['index']
+            if form[0]['element'] == 'H' and form[1]['element']['matal'] == True:
+                d_o = -1
+                d_o_2 = (0 - form[0]['index']*-1)//form[1]['index']
+                
+            if form[0]['element'] == 'H' and form[1]['element']['matal'] == False:
+                d_o = 1
+                d_o_2 = (0 - form[0]['index'])//form[1]['index']
+            
+            return f"Степень окисления {form[0]['element']} = {d_o}. Степень окисления {form[1]['element']} = {d_o_2}"
+
+    
+        if form[1]['element'] in constant_dergree['1'] or form[1]['element'] in constant_dergree['2'] or form[1]['element'] in constant_dergree['3']:
+            if form[1]['element'] in constant_dergree['1']:
+                d_o = 1
+                d_o_2 = (0-form[1]['index'])//form[0]['index']
+            if form[1]['element'] in constant_dergree['2']:
+                d_o = (0 - form[1]['index']*2)//form[0]['index']
+                d_o_2 = 2
+            if form[1]['element'] in constant_dergree['3']:
+                d_o = 3
+                d_o_2 = (0 - form[1]['index']*3)//form[0]['index']
+            if form[1]['element'] in constant_dergree['-1']:
+                d_o = -1
+                d_o_2 = (0 - form[1]['index']*-1)//form[0]['index']
+
+            if form[1]['element'] == 'H' and form[0]['element']['matal'] == True:
+                d_o = -1
+                d_o_2 = (0 - form[1]['index']*-1)//form[0]['index']
+                
+            if form[1]['element'] == 'H' and form[0]['element']['matal'] == False:
+                d_o = 1
+                d_o_2 = (0 - form[1]['index'])//form[0]['index']
+            
+            return f"Степень окисления {form[0]['element']} = {d_o}_2. Степень окисления {form[1]['element']} = {d_o}"
+    else:
+        return 'Пока функция не умеет высчитывать больше двух елементов' 
+        
+def atomic_structure(formula):
+    parsed = parse_formula(formula)
+    protons = sum(elements[e['element']]['Numb_el'] * e['index'] for e in parsed)
+    electrons = protons  # Для нейтрального атома
+    neutrons = sum((elements[e['element']]['Massa_el'] - elements[e['element']]['Numb_el']) * e['index'] for e in parsed)
+    return (
+        f"Протоны: {protons}\n"
+        f"Электроны: {electrons}\n"
+        f"Нейтроны: {neutrons}"
+    )
+
+def electronic_configur(element):
+    return el_config.get(element.capitalize(), "Конфигурация не найдена")
+
+# Обработчики сообщений
+@bot.message_handler(commands=['start'])
+def start_message(message):
+    bot.send_message(message.chat.id, "Привет ✌️ Я chemistry_bot и я могу помочь тебе с химией. Для этого выбери кнопку с той темой, которая тебя интерисует, а потом введи формулу. Удачи!🍀", reply_markup=mm)
+
+@bot.message_handler(func=lambda message: True)
+def handle_buttons(message):
+    try:
+        if message.text == "Молекулярная масса":
+            msg = bot.send_message(message.chat.id, "Введите химическую формулу (Например: H2O):")
+            bot.register_next_step_handler(msg, process_molecular_mass)
+            
+        elif message.text == "Атомная доля":
+            msg = bot.send_message(message.chat.id, "Введите химическую формулу (Например: H20):")
+            bot.register_next_step_handler(msg, process_atomic_fraction)
+            
+        elif message.text == "Узнать информацию об элементе":
+            msg = bot.send_message(message.chat.id, "Введите символ или номер элемента (Например: Cl):")
+            bot.register_next_step_handler(msg, process_element_info)
+            
+        elif message.text == "Валентность":
+            msg = bot.send_message(message.chat.id, "Введите формулу из двух элементов (Например: Mn2O7):")
+            bot.register_next_step_handler(msg, process_valence)
+            
+        elif message.text == "Атомная структура":
+            msg = bot.send_message(message.chat.id, "Введите формулу (Например: F2):")
+            bot.register_next_step_handler(msg, process_atomic_structure)
+            
+        elif message.text == "Электронная конфигурация":
+            msg = bot.send_message(message.chat.id, "Введите символ элемента(Например: Cl):")
+            bot.register_next_step_handler(msg, process_electron_config)
+
+        elif message.text == "Степень окисления":
+            msg = bot.send_message(message.chat.id, "Введите формулу (Например: CaH2):")
+            bot.register_next_step_handler(msg, process_degree_of_oxidation)
+            
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Произошла ошибка :(")
+
+def process_molecular_mass(message):
+    try:
+        result = molecular_mass(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+        
+        
+def process_atomic_fraction(message):
+    try:
+        result = atomic_fraction(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_element_info(message):
+    try:
+        result = get_inform(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_valence(message):
+    try:
+        result = valentnost(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_atomic_structure(message):
+    try:
+        result = atomic_structure(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_degree_of_oxidation(message):
+    try:
+        result = degree_of_oxidation(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+
+def process_electron_config(message):
+    try:
+        result = electronic_configur(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+bot.polling(none_stop=True, interval=0)
+
