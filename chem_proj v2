@@ -5,7 +5,7 @@ from functools import reduce
 from telebot import types
 
 #Токен тг бота
-bot = telebot.TeleBot('7608703327:AAGJLSJClBu67vEThRMOpzCW6QCGteWKPf8')
+bot = telebot.TeleBot('YOUR TOKEN')
 
 # Создаем клавиатуру
 mm = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
