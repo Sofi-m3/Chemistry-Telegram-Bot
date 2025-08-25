@@ -1,0 +1,607 @@
+""" Эта версия без телеграмм бота, 
+  но улучшенная классификацией неорганичесих веществ, 
+  код в формате PEP8, 
+  функция парсинга формулы может расспозновать скобки,
+  функция валентности - улучшена, 
+  степень окисления - другая, 
+  исаправлены константы валентности, степени окисления и списка элементов """
+
+"""
+Модуль для химических расчетов: молекулярная масса, валентность, степень окисления и др.
+"""
+
+import re
+import math
+from collections import defaultdict
+from typing import List, Dict, Union, Optional
+
+
+# Химические данные (временное хранение, потом вынести в отдельный файл)
+ELEMENTS = elements = {
+    'H': {'Name_el': 'Водород', 'Numb_el': 1, 'Massa_el': 1, 'metal': False},
+    'He': {'Name_el': 'Гелий', 'Numb_el': 2, 'Massa_el': 4, 'metal': False},
+    'Li': {'Name_el': 'Литий', 'Numb_el': 3, 'Massa_el': 7, 'metal': True},
+    'Be': {'Name_el': 'Бериллий', 'Numb_el': 4, 'Massa_el': 9, 'metal': True},
+    'B': {'Name_el': 'Бор', 'Numb_el': 5, 'Massa_el': 11, 'metal': False},
+    'C': {'Name_el': 'Углерод', 'Numb_el': 6, 'Massa_el': 12, 'metal': False},
+    'N': {'Name_el': 'Азот', 'Numb_el': 7, 'Massa_el': 14, 'metal': False},
+    'O': {'Name_el': 'Кислород', 'Numb_el': 8, 'Massa_el': 16, 'metal': False},
+    'F': {'Name_el': 'Фтор', 'Numb_el': 9, 'Massa_el': 19, 'metal': False},
+    'Ne': {'Name_el': 'Неон', 'Numb_el': 10, 'Massa_el': 20, 'metal': False},
+    'Na': {'Name_el': 'Натрий', 'Numb_el': 11, 'Massa_el': 23, 'metal': True},
+    'Mg': {'Name_el': 'Магний', 'Numb_el': 12, 'Massa_el': 24, 'metal': True},
+    'Al': {'Name_el': 'Алюминий', 'Numb_el': 13, 'Massa_el': 27, 'metal': True},
+    'Si': {'Name_el': 'Кремний', 'Numb_el': 14, 'Massa_el': 28, 'metal': False},
+    'P': {'Name_el': 'Фосфор', 'Numb_el': 15, 'Massa_el': 31, 'metal': False},
+    'S': {'Name_el': 'Сера', 'Numb_el': 16, 'Massa_el': 32, 'metal': False},
+    'Cl': {'Name_el': 'Хлор', 'Numb_el': 17, 'Massa_el': 35.5, 'metal': False},
+    'Ar': {'Name_el': 'Аргон', 'Numb_el': 18, 'Massa_el': 40, 'metal': False},
+    'K': {'Name_el': 'Калий', 'Numb_el': 19, 'Massa_el': 39, 'metal': True},
+    'Ca': {'Name_el': 'Кальций', 'Numb_el': 20, 'Massa_el': 40, 'metal': True},
+    'Sc': {'Name_el': 'Скандий', 'Numb_el': 21, 'Massa_el': 45, 'metal': True},
+    'Ti': {'Name_el': 'Титан', 'Numb_el': 22, 'Massa_el': 48, 'metal': True},
+    'V': {'Name_el': 'Ванадий', 'Numb_el': 23, 'Massa_el': 51, 'metal': True},
+    'Cr': {'Name_el': 'Хром', 'Numb_el': 24, 'Massa_el': 52, 'metal': True},
+    'Mn': {'Name_el': 'Марганец', 'Numb_el': 25, 'Massa_el': 55, 'metal': True},
+    'Fe': {'Name_el': 'Железо', 'Numb_el': 26, 'Massa_el': 56, 'metal': True},
+    'Co': {'Name_el': 'Кобальт', 'Numb_el': 27, 'Massa_el': 59, 'metal': True},
+    'Ni': {'Name_el': 'Никель', 'Numb_el': 28, 'Massa_el': 59, 'metal': True},
+    'Cu': {'Name_el': 'Медь', 'Numb_el': 29, 'Massa_el': 64, 'metal': True},
+    'Zn': {'Name_el': 'Цинк', 'Numb_el': 30, 'Massa_el': 65, 'metal': True},
+    'Ga': {'Name_el': 'Галлий', 'Numb_el': 31, 'Massa_el': 70, 'metal': True},
+    'Ge': {'Name_el': 'Германий', 'Numb_el': 32, 'Massa_el': 73, 'metal': False},
+    'As': {'Name_el': 'Мышьяк', 'Numb_el': 33, 'Massa_el': 75, 'metal': False},
+    'Se': {'Name_el': 'Селен', 'Numb_el': 34, 'Massa_el': 79, 'metal': False},
+    'Br': {'Name_el': 'Бром', 'Numb_el': 35, 'Massa_el': 80, 'metal': False},
+    'Kr': {'Name_el': 'Криптон', 'Numb_el': 36, 'Massa_el': 84, 'metal': False},
+    'Rb': {'Name_el': 'Рубидий', 'Numb_el': 37, 'Massa_el': 85, 'metal': True},
+    'Sr': {'Name_el': 'Стронций', 'Numb_el': 38, 'Massa_el': 88, 'metal': True},
+    'Y': {'Name_el': 'Иттрий', 'Numb_el': 39, 'Massa_el': 89, 'metal': True},
+    'Zr': {'Name_el': 'Цирконий', 'Numb_el': 40, 'Massa_el': 91, 'metal': True},
+    'Nb': {'Name_el': 'Ниобий', 'Numb_el': 41, 'Massa_el': 93, 'metal': True},
+    'Mo': {'Name_el': 'Молибден', 'Numb_el': 42, 'Massa_el': 96, 'metal': True},
+    'Tc': {'Name_el': 'Технеций', 'Numb_el': 43, 'Massa_el': 98, 'metal': True},
+    'Ru': {'Name_el': 'Рутений', 'Numb_el': 44, 'Massa_el': 101, 'metal': True},
+    'Rh': {'Name_el': 'Родий', 'Numb_el': 45, 'Massa_el': 103, 'metal': True},
+    'Pd': {'Name_el': 'Палладий', 'Numb_el': 46, 'Massa_el': 106, 'metal': True},
+    'Ag': {'Name_el': 'Серебро', 'Numb_el': 47, 'Massa_el': 108, 'metal': True},
+    'Cd': {'Name_el': 'Кадмий', 'Numb_el': 48, 'Massa_el': 112, 'metal': True},
+    'In': {'Name_el': 'Индий', 'Numb_el': 49, 'Massa_el': 115, 'metal': True},
+    'Sn': {'Name_el': 'Олово', 'Numb_el': 50, 'Massa_el': 119, 'metal': True},
+    'Sb': {'Name_el': 'Сурьма', 'Numb_el': 51, 'Massa_el': 122, 'metal': False},
+    'Te': {'Name_el': 'Теллур', 'Numb_el': 52, 'Massa_el': 128, 'metal': False},
+    'I': {'Name_el': 'Йод', 'Numb_el': 53, 'Massa_el': 127, 'metal': False},
+    'Xe': {'Name_el': 'Ксенон', 'Numb_el': 54, 'Massa_el': 131, 'metal': False},
+    'Cs': {'Name_el': 'Цезий', 'Numb_el': 55, 'Massa_el': 133, 'metal': True},
+    'Ba': {'Name_el': 'Барий', 'Numb_el': 56, 'Massa_el': 137, 'metal': True},
+    'La': {'Name_el': 'Лантан', 'Numb_el': 57, 'Massa_el': 139, 'metal': True},
+    'Ce': {'Name_el': 'Церий', 'Numb_el': 58, 'Massa_el': 140, 'metal': True},
+    'Pr': {'Name_el': 'Празеодим', 'Numb_el': 59, 'Massa_el': 141, 'metal': True},
+    'Nd': {'Name_el': 'Неодим', 'Numb_el': 60, 'Massa_el': 144, 'metal': True},
+    'Pm': {'Name_el': 'Прометий', 'Numb_el': 61, 'Massa_el': 145, 'metal': True},
+    'Sm': {'Name_el': 'Самарий', 'Numb_el': 62, 'Massa_el': 150, 'metal': True},
+    'Eu': {'Name_el': 'Европий', 'Numb_el': 63, 'Massa_el': 152, 'metal': True},
+    'Gd': {'Name_el': 'Гадолиний', 'Numb_el': 64, 'Massa_el': 157, 'metal': True},
+    'Tb': {'Name_el': 'Тербий', 'Numb_el': 65, 'Massa_el': 159, 'metal': True},
+    'Dy': {'Name_el': 'Диспрозий', 'Numb_el': 66, 'Massa_el': 163, 'metal': True},
+    'Ho': {'Name_el': 'Гольмий', 'Numb_el': 67, 'Massa_el': 165, 'metal': True},
+    'Er': {'Name_el': 'Эрбий', 'Numb_el': 68, 'Massa_el': 167, 'metal': True},
+    'Tm': {'Name_el': 'Тулий', 'Numb_el': 69, 'Massa_el': 169, 'metal': True},
+    'Yb': {'Name_el': 'Иттербий', 'Numb_el': 70, 'Massa_el': 173, 'metal': True},
+    'Lu': {'Name_el': 'Лютеций', 'Numb_el': 71, 'Massa_el': 175, 'metal': True},
+    'Hf': {'Name_el': 'Гафний', 'Numb_el': 72, 'Massa_el': 178, 'metal': True},
+    'Ta': {'Name_el': 'Тантал', 'Numb_el': 73, 'Massa_el': 181, 'metal': True},
+    'W': {'Name_el': 'Вольфрам', 'Numb_el': 74, 'Massa_el': 184, 'metal': True},
+    'Re': {'Name_el': 'Рений', 'Numb_el': 75, 'Massa_el': 186, 'metal': True},
+    'Os': {'Name_el': 'Осмий', 'Numb_el': 76, 'Massa_el': 190, 'metal': True},
+    'Ir': {'Name_el': 'Иридий', 'Numb_el': 77, 'Massa_el': 192, 'metal': True},
+    'Pt': {'Name_el': 'Платина', 'Numb_el': 78, 'Massa_el': 195, 'metal': True},
+    'Au': {'Name_el': 'Золото', 'Numb_el': 79, 'Massa_el': 197, 'metal': True},
+    'Hg': {'Name_el': 'Ртуть', 'Numb_el': 80, 'Massa_el': 201, 'metal': True},
+    'Tl': {'Name_el': 'Таллий', 'Numb_el': 81, 'Massa_el': 204, 'metal': True},
+    'Pb': {'Name_el': 'Свинец', 'Numb_el': 82, 'Massa_el': 207, 'metal': True},
+    'Bi': {'Name_el': 'Висмут', 'Numb_el': 83, 'Massa_el': 209, 'metal': True},
+    'Po': {'Name_el': 'Полоний', 'Numb_el': 84, 'Massa_el': 209, 'metal': False},
+    'At': {'Name_el': 'Астат', 'Numb_el': 85, 'Massa_el': 210, 'metal': False},
+    'Rn': {'Name_el': 'Радон', 'Numb_el': 86, 'Massa_el': 222, 'metal': False},
+    'Fr': {'Name_el': 'Франций', 'Numb_el': 87, 'Massa_el': 223, 'metal': True},
+    'Ra': {'Name_el': 'Радий', 'Numb_el': 88, 'Massa_el': 226, 'metal': True},
+    'Ac': {'Name_el': 'Актиний', 'Numb_el': 89, 'Massa_el': 227, 'metal': True},
+    'Th': {'Name_el': 'Торий', 'Numb_el': 90, 'Massa_el': 232, 'metal': True},
+    'Pa': {'Name_el': 'Протактиний', 'Numb_el': 91, 'Massa_el': 231, 'metal': True},
+    'U': {'Name_el': 'Уран', 'Numb_el': 92, 'Massa_el': 238, 'metal': True},
+    'Np': {'Name_el': 'Нептуний', 'Numb_el': 93, 'Massa_el': 237, 'metal': True},
+    'Pu': {'Name_el': 'Плутоний', 'Numb_el': 94, 'Massa_el': 244, 'metal': True},
+    'Am': {'Name_el': 'Америций', 'Numb_el': 95, 'Massa_el': 243, 'metal': True},
+    'Cm': {'Name_el': 'Кюрий', 'Numb_el': 96, 'Massa_el': 247, 'metal': True},
+    'Bk': {'Name_el': 'Берклий', 'Numb_el': 97, 'Massa_el': 247, 'metal': True},
+    'Cf': {'Name_el': 'Калифорний', 'Numb_el': 98, 'Massa_el': 251, 'metal': True},
+    'Es': {'Name_el': 'Эйнштейний', 'Numb_el': 99, 'Massa_el': 252, 'metal': True},
+    'Fm': {'Name_el': 'Фермий', 'Numb_el': 100, 'Massa_el': 257, 'metal': True},
+    'Md': {'Name_el': 'Менделевий', 'Numb_el': 101, 'Massa_el': 258, 'metal': True},
+    'No': {'Name_el': 'Нобелий', 'Numb_el': 102, 'Massa_el': 259, 'metal': True},
+    'Lr': {'Name_el': 'Лоуренсий', 'Numb_el': 103, 'Massa_el': 262, 'metal': True},
+    'Rf': {'Name_el': 'Резерфордий', 'Numb_el': 104, 'Massa_el': 267, 'metal': True},
+    'Db': {'Name_el': 'Дубний', 'Numb_el': 105, 'Massa_el': 270, 'metal': True},
+    'Sg': {'Name_el': 'Сиборгий', 'Numb_el': 106, 'Massa_el': 271, 'metal': True},
+    'Bh': {'Name_el': 'Борий', 'Numb_el': 107, 'Massa_el': 270, 'metal': True},
+    'Hs': {'Name_el': 'Хассий', 'Numb_el': 108, 'Massa_el': 277, 'metal': True},
+    'Mt': {'Name_el': 'Мейтнерий', 'Numb_el': 109, 'Massa_el': 276, 'metal': True},
+    'Ds': {'Name_el': 'Дармштадтий', 'Numb_el': 110, 'Massa_el': 281, 'metal': True}}
+
+Configurations = {
+    'H': '1s1',
+    'He': '1s2',
+    'Li': '1s2 2s1',
+    'Be': '1s2 2s2',
+    'B': '1s2 2s2 2p1',
+    'C': '1s2 2s2 2p2',
+    'N': '1s2 2s2 2p3',
+    'O': '1s2 2s2 2p4',
+    'F': '1s2 2s2 2p5',
+    'Ne': '1s2 2s2 2p6',
+    'Na': '1s2 2s2 2p6 3s1',
+    'Mg': '1s2 2s2 2p6 3s2',
+    'Al': '1s2 2s2 2p6 3s2 3p1',
+    'Si': '1s2 2s2 2p6 3s2 3p2',
+    'P': '1s2 2s2 2p6 3s2 3p3',
+    'S': '1s2 2s2 2p6 3s2 3p4',
+    'Cl': '1s2 2s2 2p6 3s2 3p5',
+    'Ar': '1s2 2s2 2p6 3s2 3p6',
+    'K': '1s2 2s2 2p6 3s2 3p6 4s1',
+    'Ca': '1s2 2s2 2p6 3s2 3p6 4s2',
+    'Cm': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f8',
+    'Bk': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f9',
+    'Cf': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f10',
+    'Es': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f11',
+    'Fm': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f12',
+    'Md': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f13',
+    'No': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14',
+    'Lr': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d1',
+    'Rf': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d2',
+    'Db': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d3',
+    'Sg': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d4',
+    'Bh': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d5',
+    'Hs': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d6',
+    'Mt': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d7',
+    'Ds': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d8',
+    'Rg': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d9',
+    'Cn': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d10',
+    'Nh': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d11',
+    'Fl': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d12',
+    'Mc': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d13',
+    'Lv': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d14',
+    'Ts': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d15',
+    'Og': '1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4f14 5d10 6p6 7s2 5f14 6d16'
+}
+
+VALENCY = {
+    '1': ['H', 'Li', 'Na', 'K', 'Rb', 'Cs', 'Fr', 'Ag', 'Cu', 'F', 'Cl', 'Br', 'I'],
+    '2': ['Be', 'Mg', 'Ca', 'Sr', 'Ba', 'Ra', 'Zn', 'Cd', 'O', 'S', 'Se', 'Te'],
+    '3': ['B', 'Al', 'Ga', 'In', 'Sc', 'Y', 'La', 'N', 'P', 'As', 'Sb'],
+    '4': ['C', 'Si', 'Ge', 'Sn', 'Pb', 'Ti', 'Zr', 'Hf', 'Ce', 'Th'],
+    '5': ['N', 'P', 'As', 'Sb', 'Bi', 'V', 'Nb', 'Ta'],
+    '6': ['S', 'Se', 'Te', 'Cr', 'Mo', 'W', 'U'],
+    '7': ['Mn', 'Tc', 'Re', 'Cl', 'Br', 'I'],
+    '8': ['Fe', 'Ru', 'Os']
+}
+
+OXIDATION = {
+                'F': -1, 'Cl': -1, 'Br': -1, 'I': -1,
+                'O': -2,  # кроме пероксидов
+                'H': +1,  # кроме гидридов
+                'Li': +1, 'Na': +1, 'K': +1, 'Rb': +1, 'Cs': +1,
+                'Be': +2, 'Mg': +2, 'Ca': +2, 'Sr': +2, 'Ba': +2,
+                'Al': +3, 'Zn': +2, 'Ag': +1,
+            }
+ELEMENT_SYMBOLS = list(ELEMENTS.keys())
+
+
+def parse_formula(formula: str) -> List[Dict[str, Union[str, int]]]:
+    """
+    Парсит химическую формулу со скобками () и [].
+    
+    Args:
+        formula: Химическая формула (например, "Ca(OH)2", "Al2(SO4)3")
+        
+    Returns:
+        Список словарей с элементами и их количествами
+        
+    Raises:
+        ValueError: Если формула содержит ошибки (непарные скобки, неверные символы)
+    """
+    if not formula or not isinstance(formula, str):
+        raise ValueError("Формула должна быть непустой строкой")
+    
+    formula = formula.replace(' ', '').strip()
+    if not formula:
+        raise ValueError("Формула не может быть пустой")
+    
+    # Проверяем на наличие недопустимых символов
+    if not re.match(r'^[A-Za-z0-9()\[\]]+$', formula):
+        raise ValueError("Формула содержит недопустимые символы")
+    
+    pattern = r'([A-Z][a-z]*|\(|\)|\[|\]|\d+)'
+    tokens = re.findall(pattern, formula)
+    
+    if not tokens:
+        raise ValueError("Не удалось разобрать формулу")
+    
+    stack = [[]]
+    i = 0
+    n = len(tokens)
+    
+    while i < n:
+        token = tokens[i]
+        
+        if token == '(' or token == '[':
+            stack.append([])
+            i += 1
+            
+        elif token == ')' or token == ']':
+            if len(stack) <= 1:
+                raise ValueError(f"Непарная скобка в формуле: {formula}")
+            
+            group = stack.pop()
+            i += 1
+            
+            # Проверяем множитель после скобки
+            multiplier = 1
+            if i < n and tokens[i].isdigit():
+                multiplier = int(tokens[i])
+                i += 1
+            
+            # Умножаем все элементы в группе
+            for item in group:
+                if isinstance(item, tuple):
+                    element, count = item
+                    stack[-1].append((element, count * multiplier))
+                else:
+                    stack[-1].extend([(elem, cnt * multiplier) for elem, cnt in item])
+                    
+        elif token.isdigit():
+            number = int(token)
+            i += 1
+            
+            if not stack[-1]:
+                raise ValueError(f"Число без элемента в формуле: {formula}")
+            
+            # Умножаем последний элемент/группу
+            last_item = stack[-1][-1]
+            if isinstance(last_item, tuple):
+                element, count = last_item
+                stack[-1][-1] = (element, count * number)
+            else:
+                for j in range(len(last_item)):
+                    elem, cnt = last_item[j]
+                    last_item[j] = (elem, cnt * number)
+                    
+        else:
+            # Химический элемент
+            if token not in ELEMENT_SYMBOLS:
+                raise ValueError(f"Неизвестный элемент: {token}")
+                
+            element = token
+            count = 1
+            
+            # Проверяем число после элемента
+            if i + 1 < n and tokens[i + 1].isdigit():
+                count = int(tokens[i + 1])
+                i += 2
+            else:
+                i += 1
+                
+            stack[-1].append((element, count))
+    
+    if len(stack) != 1:
+        raise ValueError("Не все скобки закрыты")
+    
+    def flatten(items: List) -> Dict[str, int]:
+        """Рекурсивно преобразует вложенную структуру в плоский словарь."""
+        result = defaultdict(int)
+        for item in items:
+            if isinstance(item, list):
+                nested_result = flatten(item)
+                for elem, cnt in nested_result.items():
+                    result[elem] += cnt
+            else:
+                element, count = item
+                result[element] += count
+        return result
+    
+    flat_result = flatten(stack[0])
+    return [{'element': elem, 'index': count} for elem, count in flat_result.items()]
+
+
+def get_element_info(element_input: str) -> str:
+    """
+    Возвращает информацию о химическом элементе.
+    
+    Args:
+        element_input: Символ элемента или атомный номер
+        
+    Returns:
+        Строка с информацией об элементе
+    """
+    try:
+        # Пытаемся преобразовать в число (атомный номер)
+        try:
+            atomic_number = int(element_input)
+            if 1 <= atomic_number <= len(ELEMENT_SYMBOLS):
+                element_symbol = ELEMENT_SYMBOLS[atomic_number - 1]
+            else:
+                return "Атомный номер вне допустимого диапазона"
+        except ValueError:
+            # Если не число, используем как символ элемента
+            element_symbol = element_input.strip().capitalize()
+        
+        if element_symbol not in ELEMENTS:
+            return f"Элемент '{element_symbol}' не найден"
+        
+        data = ELEMENTS[element_symbol]
+        metal_type = 'металл' if data['is_metal'] else 'неметалл'
+        
+        return (f"Элемент: {element_symbol}\n"
+                f"Название: {data['name_ru']}\n"
+                f"Атомный номер: {data['atomic_number']}\n"
+                f"Атомная масса: {data['atomic_mass']}\n"
+                f"Тип: {metal_type}")
+                
+    except Exception as e:
+        return f"Ошибка при получении информации об элементе: {str(e)}"
+
+
+def calculate_molecular_mass(formula: str) -> float:
+    """
+    Вычисляет молекулярную массу соединения.
+    
+    Args:
+        formula: Химическая формула
+        
+    Returns:
+        Молекулярная масса в а.е.м.
+    """
+    try:
+        parsed = parse_formula(formula)
+        total_mass = 0.0
+        
+        for element_data in parsed:
+            element = element_data['element']
+            count = element_data['index']
+            
+            if element not in ELEMENTS:
+                raise ValueError(f"Неизвестный элемент: {element}")
+                
+            total_mass += ELEMENTS[element]['atomic_mass'] * count
+            
+        return round(total_mass, 4)
+        
+    except Exception as e:
+        raise ValueError(f"Ошибка расчета молекулярной массы: {str(e)}")
+
+
+def molecular_mass(formula: str) -> str:
+    """
+    Возвращает строку с молекулярной массой соединения.
+    
+    Args:
+        formula: Химическая формула
+        
+    Returns:
+        Строка с результатом расчета
+    """
+    try:
+        mass = calculate_molecular_mass(formula)
+        return f'Молекулярная масса {formula} = {mass} а.е.м.'
+    except Exception as e:
+        return f"Ошибка: {str(e)}"
+
+
+def atomic_structure(formula: str) -> str:
+    """
+    Рассчитывает количество протонов, электронов и нейтронов.
+    
+    Args:
+        formula: Химическая формула
+        
+    Returns:
+        Строка с результатами расчета
+    """
+    try:
+        parsed = parse_formula(formula)
+        protons = 0
+        neutrons = 0.0
+        
+        for element_data in parsed:
+            element = element_data['element']
+            count = element_data['index']
+            
+            if element not in ELEMENTS:
+                raise ValueError(f"Неизвестный элемент: {element}")
+                
+            element_data = ELEMENTS[element]
+            protons += element_data['atomic_number'] * count
+            # Нейтроны = масса - протоны (округляем для целых чисел)
+            neutrons += round((element_data['atomic_mass'] - element_data['atomic_number']) * count)
+        
+        electrons = protons  # Для нейтрального атома/молекулы
+        
+        return (f"Для {formula}:\n"
+                f"Протоны: {protons}\n"
+                f"Электроны: {electrons}\n"
+                f"Нейтроны: {int(neutrons)}")
+                
+    except Exception as e:
+        return f"Ошибка расчета атомной структуры: {str(e)}"
+
+
+def calculate_valency(formula: str) -> str:
+    """
+    Рассчитывает валентность элементов в бинарном соединении.
+    
+    Args:
+        formula: Химическая формула вида AxBy
+        
+    Returns:
+        Строка с результатами расчета валентности
+    """
+    try:
+        parsed = parse_formula(formula)
+        
+        if len(parsed) != 2:
+            return "Формула должна состоять из двух разных элементов."
+        
+        elem1, count1 = parsed[0]['element'], parsed[0]['index']
+        elem2, count2 = parsed[1]['element'], parsed[1]['index']
+        
+        def find_known_valency(element: str) -> Optional[int]:
+            """Ищет известную валентность элемента."""
+            for valency_str, elements_list in VALENCY.items():
+                if element in elements_list:
+                    return int(valency_str)
+            return None
+        
+        # Ищем элемент с известной валентностью
+        valency1 = find_known_valency(elem1)
+        valency2 = find_known_valency(elem2)
+        
+        if valency1 is not None:
+            calculated_valency2 = (valency1 * count1) // count2
+            return (f"Валентность {elem1} = {valency1}. "
+                    f"Валентность {elem2} = {calculated_valency2}")
+        
+        elif valency2 is not None:
+            calculated_valency1 = (valency2 * count2) // count1
+            return (f"Валентность {elem1} = {calculated_valency1}. "
+                    f"Валентность {elem2} = {valency2}")
+        
+        else:
+            return ("Не могу определить валентность - "
+                    "нет элемента с известной постоянной валентностью.")
+            
+    except Exception as e:
+        return f"Ошибка при расчете валентности: {str(e)}"
+
+
+def calculate_oxidation_state(formula: str) -> str:
+    """
+    Рассчитывает степень окисления элементов в соединении.
+    
+    Args:
+        formula: Химическая формула
+        
+    Returns:
+        Строка с результатами расчета степени окисления
+    """
+    try:
+        parsed = parse_formula(formula)
+        
+        if len(parsed) == 1:
+            # Простое вещество
+            return f"Степень окисления {parsed[0]['element']} = 0"
+        
+        elif len(parsed) == 2:
+            elem1, count1 = parsed[0]['element'], parsed[0]['index']
+            elem2, count2 = parsed[1]['element'], parsed[1]['index']
+            
+
+            
+            # Особые случаи
+            if formula.upper() == "H2O2":
+                return "Степень окисления H = +1. Степень окисления O = -1"
+            
+            # Проверяем элементы с постоянной СО
+            oxidation1 = OXIDATION.get(elem1)
+            oxidation2 = OXIDATION.get(elem2)
+            
+            if oxidation1 is not None:
+                # Вычисляем СО второго элемента
+                oxidation2_calculated = - (oxidation1 * count1) / count2
+                
+                # Особый случай: гидриды металлов
+                if elem1 == 'H' and ELEMENTS.get(elem2, {}).get('is_metal'):
+                    oxidation1 = -1
+                    oxidation2_calculated = - (oxidation1 * count1) / count2
+                
+                return (f"Степень окисления {elem1} = {oxidation1}. "
+                        f"Степень окисления {elem2} = {oxidation2_calculated:.0f}")
+            
+            elif oxidation2 is not None:
+                # Вычисляем СО первого элемента
+                oxidation1_calculated = - (oxidation2 * count2) / count1
+                
+                # Особый случай: гидриды металлов
+                if elem2 == 'H' and ELEMENTS.get(elem1, {}).get('is_metal'):
+                    oxidation2 = -1
+                    oxidation1_calculated = - (oxidation2 * count2) / count1
+                
+                return (f"Степень окисления {elem1} = {oxidation1_calculated:.0f}. "
+                        f"Степень окисления {elem2} = {oxidation2}")
+            
+            else:
+                return "Не могу определить степень окисления."
+        
+        else:
+            return "Пока поддерживаются только формулы с одним или двумя элементами."
+            
+    except Exception as e:
+        return f"Ошибка при расчете степени окисления: {str(e)}"
+
+
+def calculate_moles(formula: str, **kwargs) -> str:
+    """
+    Рассчитывает моли, массу, объем и количество частиц.
+    
+    Args:
+        formula: Химическая формула
+        **kwargs: Один из параметров: v=объем, m=масса, N=количество частиц, mol=моли
+        
+    Returns:
+        Строка с результатами расчетов
+    """
+    try:
+        if not kwargs or len(kwargs) != 1:
+            return "Укажите один параметр: v, m, N или mol"
+        
+        mass = calculate_molecular_mass(formula)
+        molar_volume = 22.4  # л/моль при н.у.
+        avogadro_number = 6.02e23
+        
+        param_name, param_value = next(iter(kwargs.items()))
+        param_value = float(param_value)
+        
+        if param_name == 'v':
+            moles = param_value / molar_volume
+            results = [f"Объем = {param_value} л"]
+        elif param_name == 'm':
+            moles = param_value / mass
+            results = [f"Масса = {param_value} г"]
+        elif param_name == 'N':
+            moles = (param_value * 1e23) / avogadro_number
+            results = [f"Количество частиц = {param_value}×10²³"]
+        elif param_name == 'mol':
+            moles = param_value
+            results = [f"Количество вещества = {param_value} моль"]
+        else:
+            return "Неверный параметр. Используйте: v, m, N или mol"
+        
+        # Рассчитываем все величины
+        calculated_mass = moles * mass
+        calculated_particles = moles * avogadro_number / 1e23
+        calculated_volume = moles * molar_volume
+        
+        results.extend([
+            f"Молярная масса = {mass:.4f} г/моль",
+            f"Количество вещества = {moles:.6f} моль",
+            f"Масса = {calculated_mass:.4f} г",
+            f"Количество частиц = {calculated_particles:.4f}×10²³",
+            f"Объем (н.у.) = {calculated_volume:.4f} л"
+        ])
+        
+        return "\n".join(results)
+        
+    except ValueError:
+        return "Неверное числовое значение параметра"
+    except Exception as e:
+        return f"Ошибка расчета: {str(e)}"
+
