@@ -1,8 +1,9 @@
-# Это исправленный код безтелеграмм бота
+# Это исправленный код безтелеграмм бота и функции парсинга
 
 # Импортируем модули
 
 import re, math
+from collections import defaultdict
 
 
 
@@ -181,31 +182,114 @@ element_symbols = [
     'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og'
 ]
 
+
 def parse_formula(formula):
-  """Подготавливает формулу"""
-  elements_list = []
-  index = 0
-  while index < len(formula):
-      matched_symbol = ''
-      for symbol in element_symbols:
-          if formula[index:].startswith(symbol):
-              if len(symbol) > len(matched_symbol):
-                  matched_symbol = symbol
-      if matched_symbol:
-          element = matched_symbol
-          index += len(matched_symbol)
-          count = ''
-          while index < len(formula) and formula[index].isdigit():
-              count += formula[index]
-              index += 1
-          count = int(count) if count else 1
-          elements_list.append({
-                'element': element,
-                'index': count,
-            })
-      else:
-          index += 1
-  return elements_list
+    """
+    Парсит химическую формулу со скобками () и [].
+    Возвращает список словарей {'element': элемент, 'index': количество}
+    
+    Примеры:
+    "H2O" -> [{'element': 'H', 'index': 2}, {'element': 'O', 'index': 1}]
+    "Ca(OH)2" -> [{'element': 'Ca', 'index': 1}, {'element': 'O', 'index': 2}, {'element': 'H', 'index': 2}]
+    "K4[Fe(CN)6]" -> [{'element': 'K', 'index': 4}, {'element': 'Fe', 'index': 1}, {'element': 'C', 'index': 6}, {'element': 'N', 'index': 6}]
+    """
+    
+    # Удаляем пробелы и приводим к правильному формату
+    formula = formula.replace(' ', '')
+    
+    # Регулярное выражение для поиска элементов, скобок и чисел
+    pattern = r'([A-Z][a-z]*|\(|\)|\[|\]|\d+)'
+    tokens = re.findall(pattern, formula)
+    
+    stack = [[]]  # Стек для обработки вложенных скобок
+    i = 0
+    n = len(tokens)
+    
+    while i < n:
+        token = tokens[i]
+        
+        if token == '(' or token == '[':
+            # Начало новой группы - добавляем новый уровень в стек
+            stack.append([])
+            i += 1
+            
+        elif token == ')' or token == ']':
+            # Конец группы - извлекаем последнюю группу из стека
+            if len(stack) <= 1:
+                raise ValueError(f"Непарная скобка в позиции {i}: {formula}")
+            
+            group = stack.pop()
+            i += 1
+            
+            # Проверяем, есть ли после скобки число (множитель)
+            multiplier = 1
+            if i < n and tokens[i].isdigit():
+                multiplier = int(tokens[i])
+                i += 1
+            
+            # Умножаем все элементы в группе на множитель и добавляем в текущий уровень
+            for item in group:
+                if isinstance(item, tuple):
+                    element, count = item
+                    stack[-1].append((element, count * multiplier))
+                else:
+                    # Это вложенная группа
+                    stack[-1].extend([(elem, cnt * multiplier) for elem, cnt in item])
+                    
+        elif token.isdigit():
+            # Число после элемента или группы
+            number = int(token)
+            i += 1
+            
+            if not stack[-1]:
+                raise ValueError(f"Число без элемента в позиции {i}: {formula}")
+            
+            # Умножаем последний элемент/группу на число
+            last_item = stack[-1][-1]
+            if isinstance(last_item, tuple):
+                element, count = last_item
+                stack[-1][-1] = (element, count * number)
+            else:
+                # Умножаем всю группу
+                for j in range(len(last_item)):
+                    elem, cnt = last_item[j]
+                    last_item[j] = (elem, cnt * number)
+                    
+        else:
+            # Это химический элемент
+            element = token
+            count = 1
+            
+            # Проверяем, есть ли число после элемента
+            if i + 1 < n and tokens[i + 1].isdigit():
+                count = int(tokens[i + 1])
+                i += 2
+            else:
+                i += 1
+                
+            stack[-1].append((element, count))
+    
+    if len(stack) != 1:
+        raise ValueError("Не все скобки закрыты")
+    
+    # Преобразуем вложенную структуру в плоский словарь
+    def flatten(items):
+        result = defaultdict(int)
+        for item in items:
+            if isinstance(item, list):
+                # Рекурсивно обрабатываем вложенные группы
+                nested_result = flatten(item)
+                for elem, cnt in nested_result.items():
+                    result[elem] += cnt
+            else:
+                element, count = item
+                result[element] += count
+        return result
+    
+    # Преобразуем итоговый результат в нужный формат
+    flat_result = flatten(stack[0])
+    return [{'element': elem, 'index': count} for elem, count in flat_result.items()]
+
 
 def get_inform(el):
     '''Находит информацию о элементе по его названию или его номера'''
