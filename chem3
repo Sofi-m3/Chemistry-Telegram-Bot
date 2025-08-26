@@ -7,6 +7,7 @@
   исаправлены константы валентности, степени окисления и списка элементов """
 
 """
+"""
 Модуль для химических расчетов: молекулярная масса, валентность, степень окисления и др.
 """
 
@@ -16,7 +17,7 @@ from collections import defaultdict
 from typing import List, Dict, Union, Optional
 
 
-# Химические данные (временное хранение, потом вынести в отдельный файл)
+
 ELEMENTS = elements = {
     'H': {'Name_el': 'Водород', 'Numb_el': 1, 'Massa_el': 1, 'metal': False},
     'He': {'Name_el': 'Гелий', 'Numb_el': 2, 'Massa_el': 4, 'metal': False},
@@ -129,7 +130,7 @@ ELEMENTS = elements = {
     'Mt': {'Name_el': 'Мейтнерий', 'Numb_el': 109, 'Massa_el': 276, 'metal': True},
     'Ds': {'Name_el': 'Дармштадтий', 'Numb_el': 110, 'Massa_el': 281, 'metal': True}}
 
-Configurations = {
+CONFIGURATIONS= {
     'H': '1s1',
     'He': '1s2',
     'Li': '1s2 2s1',
@@ -200,57 +201,57 @@ ELEMENT_SYMBOLS = list(ELEMENTS.keys())
 def parse_formula(formula: str) -> List[Dict[str, Union[str, int]]]:
     """
     Парсит химическую формулу со скобками () и [].
-    
+
     Args:
         formula: Химическая формула (например, "Ca(OH)2", "Al2(SO4)3")
-        
+
     Returns:
         Список словарей с элементами и их количествами
-        
+
     Raises:
         ValueError: Если формула содержит ошибки (непарные скобки, неверные символы)
     """
     if not formula or not isinstance(formula, str):
         raise ValueError("Формула должна быть непустой строкой")
-    
+
     formula = formula.replace(' ', '').strip()
     if not formula:
         raise ValueError("Формула не может быть пустой")
-    
+
     # Проверяем на наличие недопустимых символов
     if not re.match(r'^[A-Za-z0-9()\[\]]+$', formula):
         raise ValueError("Формула содержит недопустимые символы")
-    
+
     pattern = r'([A-Z][a-z]*|\(|\)|\[|\]|\d+)'
     tokens = re.findall(pattern, formula)
-    
+
     if not tokens:
         raise ValueError("Не удалось разобрать формулу")
-    
+
     stack = [[]]
     i = 0
     n = len(tokens)
-    
+
     while i < n:
         token = tokens[i]
-        
+
         if token == '(' or token == '[':
             stack.append([])
             i += 1
-            
+
         elif token == ')' or token == ']':
             if len(stack) <= 1:
                 raise ValueError(f"Непарная скобка в формуле: {formula}")
-            
+
             group = stack.pop()
             i += 1
-            
+
             # Проверяем множитель после скобки
             multiplier = 1
             if i < n and tokens[i].isdigit():
                 multiplier = int(tokens[i])
                 i += 1
-            
+
             # Умножаем все элементы в группе
             for item in group:
                 if isinstance(item, tuple):
@@ -258,14 +259,14 @@ def parse_formula(formula: str) -> List[Dict[str, Union[str, int]]]:
                     stack[-1].append((element, count * multiplier))
                 else:
                     stack[-1].extend([(elem, cnt * multiplier) for elem, cnt in item])
-                    
+
         elif token.isdigit():
             number = int(token)
             i += 1
-            
+
             if not stack[-1]:
                 raise ValueError(f"Число без элемента в формуле: {formula}")
-            
+
             # Умножаем последний элемент/группу
             last_item = stack[-1][-1]
             if isinstance(last_item, tuple):
@@ -275,27 +276,27 @@ def parse_formula(formula: str) -> List[Dict[str, Union[str, int]]]:
                 for j in range(len(last_item)):
                     elem, cnt = last_item[j]
                     last_item[j] = (elem, cnt * number)
-                    
+
         else:
             # Химический элемент
             if token not in ELEMENT_SYMBOLS:
                 raise ValueError(f"Неизвестный элемент: {token}")
-                
+
             element = token
             count = 1
-            
+
             # Проверяем число после элемента
             if i + 1 < n and tokens[i + 1].isdigit():
                 count = int(tokens[i + 1])
                 i += 2
             else:
                 i += 1
-                
+
             stack[-1].append((element, count))
-    
+
     if len(stack) != 1:
         raise ValueError("Не все скобки закрыты")
-    
+
     def flatten(items: List) -> Dict[str, int]:
         """Рекурсивно преобразует вложенную структуру в плоский словарь."""
         result = defaultdict(int)
@@ -308,7 +309,7 @@ def parse_formula(formula: str) -> List[Dict[str, Union[str, int]]]:
                 element, count = item
                 result[element] += count
         return result
-    
+
     flat_result = flatten(stack[0])
     return [{'element': elem, 'index': count} for elem, count in flat_result.items()]
 
@@ -316,10 +317,10 @@ def parse_formula(formula: str) -> List[Dict[str, Union[str, int]]]:
 def get_element_info(element_input: str) -> str:
     """
     Возвращает информацию о химическом элементе.
-    
+
     Args:
         element_input: Символ элемента или атомный номер
-        
+
     Returns:
         Строка с информацией об элементе
     """
@@ -334,48 +335,52 @@ def get_element_info(element_input: str) -> str:
         except ValueError:
             # Если не число, используем как символ элемента
             element_symbol = element_input.strip().capitalize()
-        
+
         if element_symbol not in ELEMENTS:
             return f"Элемент '{element_symbol}' не найден"
-        
+
         data = ELEMENTS[element_symbol]
-        metal_type = 'металл' if data['is_metal'] else 'неметалл'
-        
+        metal_type = 'металл' if data['metal'] else 'неметалл'
+
         return (f"Элемент: {element_symbol}\n"
-                f"Название: {data['name_ru']}\n"
-                f"Атомный номер: {data['atomic_number']}\n"
-                f"Атомная масса: {data['atomic_mass']}\n"
+                f"Название: {data['Name_el']}\n"
+                f"Атомный номер: {data['Numb_el']}\n"
+                f"Атомная масса: {data['Massa_el']}\n"
                 f"Тип: {metal_type}")
-                
+
     except Exception as e:
         return f"Ошибка при получении информации об элементе: {str(e)}"
+
+def electronic_configur(element):
+  '''Рассчитывает электронную конфигруацию '''
+  return CONFIGURATIONS.get(element.capitalize(), "Конфигурация не найдена")
 
 
 def calculate_molecular_mass(formula: str) -> float:
     """
     Вычисляет молекулярную массу соединения.
-    
+
     Args:
         formula: Химическая формула
-        
+
     Returns:
         Молекулярная масса в а.е.м.
     """
     try:
         parsed = parse_formula(formula)
         total_mass = 0.0
-        
+
         for element_data in parsed:
             element = element_data['element']
             count = element_data['index']
-            
+
             if element not in ELEMENTS:
                 raise ValueError(f"Неизвестный элемент: {element}")
-                
-            total_mass += ELEMENTS[element]['atomic_mass'] * count
-            
+
+            total_mass += ELEMENTS[element]['Massa_el'] * count
+
         return round(total_mass, 4)
-        
+
     except Exception as e:
         raise ValueError(f"Ошибка расчета молекулярной массы: {str(e)}")
 
@@ -383,10 +388,10 @@ def calculate_molecular_mass(formula: str) -> float:
 def molecular_mass(formula: str) -> str:
     """
     Возвращает строку с молекулярной массой соединения.
-    
+
     Args:
         formula: Химическая формула
-        
+
     Returns:
         Строка с результатом расчета
     """
@@ -400,10 +405,10 @@ def molecular_mass(formula: str) -> str:
 def atomic_structure(formula: str) -> str:
     """
     Рассчитывает количество протонов, электронов и нейтронов.
-    
+
     Args:
         formula: Химическая формула
-        
+
     Returns:
         Строка с результатами расчета
     """
@@ -411,26 +416,26 @@ def atomic_structure(formula: str) -> str:
         parsed = parse_formula(formula)
         protons = 0
         neutrons = 0.0
-        
+
         for element_data in parsed:
             element = element_data['element']
             count = element_data['index']
-            
+
             if element not in ELEMENTS:
                 raise ValueError(f"Неизвестный элемент: {element}")
-                
+
             element_data = ELEMENTS[element]
-            protons += element_data['atomic_number'] * count
+            protons += element_data['Numb_el'] * count
             # Нейтроны = масса - протоны (округляем для целых чисел)
-            neutrons += round((element_data['atomic_mass'] - element_data['atomic_number']) * count)
-        
+            neutrons += round((element_data['Massa_el'] - element_data['Numb_el']) * count)
+
         electrons = protons  # Для нейтрального атома/молекулы
-        
+
         return (f"Для {formula}:\n"
                 f"Протоны: {protons}\n"
                 f"Электроны: {electrons}\n"
                 f"Нейтроны: {int(neutrons)}")
-                
+
     except Exception as e:
         return f"Ошибка расчета атомной структуры: {str(e)}"
 
@@ -438,54 +443,55 @@ def atomic_structure(formula: str) -> str:
 def calculate_valency(formula: str) -> str:
     """
     Рассчитывает валентность элементов в бинарном соединении.
-    
+
     Args:
         formula: Химическая формула вида AxBy
-        
+
     Returns:
         Строка с результатами расчета валентности
     """
     try:
         parsed = parse_formula(formula)
-        
+
         if len(parsed) != 2:
             return "Формула должна состоять из двух разных элементов."
-        
+
         elem1, count1 = parsed[0]['element'], parsed[0]['index']
         elem2, count2 = parsed[1]['element'], parsed[1]['index']
-        
+
         def find_known_valency(element: str) -> Optional[int]:
             """Ищет известную валентность элемента."""
             for valency_str, elements_list in VALENCY.items():
                 if element in elements_list:
                     return int(valency_str)
             return None
-        
+
         # Ищем элемент с известной валентностью
         valency1 = find_known_valency(elem1)
         valency2 = find_known_valency(elem2)
-        
+
         if valency1 is not None:
             calculated_valency2 = (valency1 * count1) // count2
             return (f"Валентность {elem1} = {valency1}. "
                     f"Валентность {elem2} = {calculated_valency2}")
-        
+
         elif valency2 is not None:
             calculated_valency1 = (valency2 * count2) // count1
             return (f"Валентность {elem1} = {calculated_valency1}. "
                     f"Валентность {elem2} = {valency2}")
-        
+
         else:
             return ("Не могу определить валентность - "
                     "нет элемента с известной постоянной валентностью.")
-            
+
     except Exception as e:
         return f"Ошибка при расчете валентности: {str(e)}"
 
 
 def calculate_oxidation_state(formula: str) -> str:
     """
-    Рассчитывает степень окисления элементов в соединении.
+    Рассчитывает степень окисления элементов в соединении любой сложности.
+    Использует систему уравнений на основе правил определения СО.
     
     Args:
         formula: Химическая формула
@@ -498,78 +504,255 @@ def calculate_oxidation_state(formula: str) -> str:
         
         if len(parsed) == 1:
             # Простое вещество
-            return f"Степень окисления {parsed[0]['element']} = 0"
+            element = parsed[0]['element']
+            return f"Степень окисления {element} = 0"
         
-        elif len(parsed) == 2:
-            elem1, count1 = parsed[0]['element'], parsed[0]['index']
-            elem2, count2 = parsed[1]['element'], parsed[1]['index']
+        # Получаем список уникальных элементов
+        elements = list(set(item['element'] for item in parsed))
+        elements.sort()
+        
+        # Правила для определения степени окисления
+        oxidation_rules = {
+            # Элементы с постоянной СО
+            'F': -1, 'Cl': -1, 'Br': -1, 'I': -1,
+            'O': -2,  # кроме пероксидов, надпероксидов, озонидов, OF2
+            'H': +1,  # кроме гидридов
+            'Li': +1, 'Na': +1, 'K': +1, 'Rb': +1, 'Cs': +1, 'Fr': +1,
+            'Be': +2, 'Mg': +2, 'Ca': +2, 'Sr': +2, 'Ba': +2, 'Ra': +2,
+            'Al': +3, 'Zn': +2, 'Cd': +2, 'Ag': +1,
             
-
+            # Щелочные металлы всегда +1
+            'Li': +1, 'Na': +1, 'K': +1, 'Rb': +1, 'Cs': +1, 'Fr': +1,
             
-            # Особые случаи
-            if formula.upper() == "H2O2":
-                return "Степень окисления H = +1. Степень окисления O = -1"
+            # Щелочноземельные металлы всегда +2
+            'Be': +2, 'Mg': +2, 'Ca': +2, 'Sr': +2, 'Ba': +2, 'Ra': +2,
             
-            # Проверяем элементы с постоянной СО
-            oxidation1 = OXIDATION.get(elem1)
-            oxidation2 = OXIDATION.get(elem2)
+            # Алюминий всегда +3
+            'Al': +3,
             
-            if oxidation1 is not None:
-                # Вычисляем СО второго элемента
-                oxidation2_calculated = - (oxidation1 * count1) / count2
-                
-                # Особый случай: гидриды металлов
-                if elem1 == 'H' and ELEMENTS.get(elem2, {}).get('is_metal'):
-                    oxidation1 = -1
-                    oxidation2_calculated = - (oxidation1 * count1) / count2
-                
-                return (f"Степень окисления {elem1} = {oxidation1}. "
-                        f"Степень окисления {elem2} = {oxidation2_calculated:.0f}")
+            # Фтор всегда -1
+            'F': -1,
             
-            elif oxidation2 is not None:
-                # Вычисляем СО первого элемента
-                oxidation1_calculated = - (oxidation2 * count2) / count1
-                
-                # Особый случай: гидриды металлов
-                if elem2 == 'H' and ELEMENTS.get(elem1, {}).get('is_metal'):
-                    oxidation2 = -1
-                    oxidation1_calculated = - (oxidation2 * count2) / count1
-                
-                return (f"Степень окисления {elem1} = {oxidation1_calculated:.0f}. "
-                        f"Степень окисления {elem2} = {oxidation2}")
+            # Кислород обычно -2 (исключения обрабатываются отдельно)
+            'O': -2,
             
+            # Водород обычно +1 (исключения: гидриды металлов -1)
+            'H': +1,
+        }
+        
+        # Особые случаи (обрабатываются в первую очередь)
+        special_cases = {
+            "H2O2": {"H": +1, "O": -1},  # Пероксид водорода
+            "KO2": {"K": +1, "O": -0.5},  # Надпероксид калия
+            "KO3": {"K": +1, "O": -1/3},  # Озонид калия
+            "OF2": {"O": +2, "F": -1},    # Фторид кислорода
+            "O2F2": {"O": +1, "F": -1},   # Фторид кислорода(II)
+            "XeO4": {"Xe": +8, "O": -2},  # Оксид ксенона(VIII)
+        }
+        
+        # Проверяем особые случаи
+        if formula in special_cases:
+            result = []
+            for element, oxidation in special_cases[formula].items():
+                result.append(f"{element}: {oxidation:+}")
+            return f"Особый случай {formula}: {', '.join(result)}"
+        
+        # Создаем систему уравнений
+        # Уравнение: sum(oxidation_i * count_i) = общий заряд (0 для нейтральных молекул)
+        
+        # Собираем информацию о каждом элементе
+        element_info = {}
+        for item in parsed:
+            element = item['element']
+            count = item['index']
+            if element not in element_info:
+                element_info[element] = {'count': 0, 'known_oxidation': None}
+            element_info[element]['count'] += count
+            
+            # Проверяем, известна ли СО элемента
+            if element in oxidation_rules:
+                element_info[element]['known_oxidation'] = oxidation_rules[element]
+        
+        # Определяем, какие элементы имеют известную СО
+        known_elements = []
+        unknown_elements = []
+        
+        for element, info in element_info.items():
+            if info['known_oxidation'] is not None:
+                known_elements.append(element)
             else:
-                return "Не могу определить степень окисления."
+                unknown_elements.append(element)
         
-        else:
-            return "Пока поддерживаются только формулы с одним или двумя элементами."
+        # Если все элементы известны - просто возвращаем результат
+        if not unknown_elements:
+            result = []
+            total_charge = 0
+            for element in elements:
+                oxidation = element_info[element]['known_oxidation']
+                count = element_info[element]['count']
+                total_charge += oxidation * count
+                result.append(f"{element}: {oxidation:+}")
             
+            if abs(total_charge) > 0.01:  # Проверка с учетом погрешности
+                return (f"Предупреждение: суммарный заряд ≠ 0 ({total_charge:.2f}). "
+                       f"Результат: {', '.join(result)}")
+            return f"{formula}: {', '.join(result)}"
+        
+        # Если только один элемент неизвестен - вычисляем его
+        if len(unknown_elements) == 1:
+            unknown_element = unknown_elements[0]
+            total_known_charge = 0
+            
+            for element in known_elements:
+                oxidation = element_info[element]['known_oxidation']
+                count = element_info[element]['count']
+                total_known_charge += oxidation * count
+            
+            # Вычисляем СО неизвестного элемента
+            unknown_count = element_info[unknown_element]['count']
+            unknown_oxidation = -total_known_charge / unknown_count
+            
+            # Проверяем на целое число (для большинства случаев)
+            if abs(unknown_oxidation - round(unknown_oxidation)) < 0.01:
+                unknown_oxidation = round(unknown_oxidation)
+            
+            result = []
+            for element in elements:
+                if element == unknown_element:
+                    oxidation = unknown_oxidation
+                else:
+                    oxidation = element_info[element]['known_oxidation']
+                result.append(f"{element}: {oxidation:+}")
+            
+            return f"{formula}: {', '.join(result)}"
+        
+        # Для нескольких неизвестных элементов используем эвристические правила
+        # Правило 1: Более электроотрицательный элемент имеет отрицательную СО
+        electronegativity_order = [
+            'F', 'O', 'N', 'Cl', 'Br', 'I', 'S', 'C', 'H', 
+            'P', 'Si', 'B', 'As', 'Te', 'Se', 'At', 
+            # Металлы (обычно положительная СО)
+            'Cs', 'Fr', 'Rb', 'K', 'Na', 'Li', 'Ra', 'Ba', 'Sr', 
+            'Ca', 'Mg', 'Be', 'Al', 'Zn', 'Cd', 'Ag'
+        ]
+        
+        # Сортируем неизвестные элементы по электроотрицательности
+        def get_electronegativity_index(element):
+            try:
+                return electronegativity_order.index(element)
+            except ValueError:
+                return len(electronegativity_order)  # Неизвестные элементы в конце
+        
+        unknown_elements_sorted = sorted(unknown_elements, key=get_electronegativity_index)
+        
+        # Пытаемся определить СО по common значениям
+        common_oxidations = {
+            'C': [-4, -3, -2, -1, 0, +1, +2, +3, +4],
+            'N': [-3, -2, -1, 0, +1, +2, +3, +4, +5],
+            'S': [-2, -1, 0, +1, +2, +3, +4, +5, +6],
+            'P': [-3, -2, -1, 0, +1, +2, +3, +4, +5],
+            'Mn': [+2, +3, +4, +6, +7],
+            'Cr': [+2, +3, +6],
+            'Fe': [+2, +3],
+            'Cu': [+1, +2],
+            'Sn': [+2, +4],
+            'Pb': [+2, +4],
+        }
+        
+        # Пробуем common значения СО для неизвестных элементов
+        possible_solutions = []
+        
+        def try_solve(unknown_values):
+            """Пытается решить систему уравнений с заданными значениями."""
+            total_charge = 0
+            for element in known_elements:
+                oxidation = element_info[element]['known_oxidation']
+                count = element_info[element]['count']
+                total_charge += oxidation * count
+            
+            for element, oxidation in unknown_values.items():
+                count = element_info[element]['count']
+                total_charge += oxidation * count
+            
+            return abs(total_charge) < 0.01  # Сумма ≈ 0
+        
+        # Рекурсивно перебираем возможные комбинации
+        def find_solutions(current_solution, remaining_elements):
+            if not remaining_elements:
+                if try_solve(current_solution):
+                    possible_solutions.append(current_solution.copy())
+                return
+            
+            current_element = remaining_elements[0]
+            possible_oxidations = common_oxidations.get(current_element, list(range(-8, 9)))
+            
+            for oxidation in possible_oxidations:
+                current_solution[current_element] = oxidation
+                find_solutions(current_solution, remaining_elements[1:])
+            
+            current_solution.pop(current_element, None)
+        
+        # Запускаем поиск решений
+        find_solutions({}, unknown_elements)
+        
+        if possible_solutions:
+            # Берем первое решение (обычно самое вероятное)
+            solution = possible_solutions[0]
+            result = []
+            for element in elements:
+                if element in known_elements:
+                    oxidation = element_info[element]['known_oxidation']
+                else:
+                    oxidation = solution[element]
+                result.append(f"{element}: {oxidation:+}")
+            
+            if len(possible_solutions) > 1:
+                return (f"{formula}: {', '.join(result)} "
+                       f"(возможны другие варианты: {len(possible_solutions)-1})")
+            return f"{formula}: {', '.join(result)}"
+        
+        # Если не нашли решения - возвращаем информацию для ручного расчета
+        result = []
+        for element in elements:
+            if element in known_elements:
+                oxidation = element_info[element]['known_oxidation']
+                result.append(f"{element}: {oxidation:+} (известно)")
+            else:
+                result.append(f"{element}: ?")
+        
+        known_charge = sum(element_info[e]['known_oxidation'] * element_info[e]['count'] 
+                          for e in known_elements if element_info[e]['known_oxidation'] is not None)
+        
+        return (f"Не удалось автоматически определить СО для {formula}. "
+               f"Известные: {', '.join(result)}. "
+               f"Сумма известных зарядов: {known_charge}. "
+               f"Неизвестные элементы: {', '.join(unknown_elements)}")
+                
     except Exception as e:
         return f"Ошибка при расчете степени окисления: {str(e)}"
-
 
 def calculate_moles(formula: str, **kwargs) -> str:
     """
     Рассчитывает моли, массу, объем и количество частиц.
-    
+
     Args:
         formula: Химическая формула
         **kwargs: Один из параметров: v=объем, m=масса, N=количество частиц, mol=моли
-        
+
     Returns:
         Строка с результатами расчетов
     """
     try:
         if not kwargs or len(kwargs) != 1:
             return "Укажите один параметр: v, m, N или mol"
-        
+
         mass = calculate_molecular_mass(formula)
         molar_volume = 22.4  # л/моль при н.у.
         avogadro_number = 6.02e23
-        
+
         param_name, param_value = next(iter(kwargs.items()))
         param_value = float(param_value)
-        
+
         if param_name == 'v':
             moles = param_value / molar_volume
             results = [f"Объем = {param_value} л"]
@@ -584,12 +767,12 @@ def calculate_moles(formula: str, **kwargs) -> str:
             results = [f"Количество вещества = {param_value} моль"]
         else:
             return "Неверный параметр. Используйте: v, m, N или mol"
-        
+
         # Рассчитываем все величины
         calculated_mass = moles * mass
         calculated_particles = moles * avogadro_number / 1e23
         calculated_volume = moles * molar_volume
-        
+
         results.extend([
             f"Молярная масса = {mass:.4f} г/моль",
             f"Количество вещества = {moles:.6f} моль",
@@ -597,11 +780,62 @@ def calculate_moles(formula: str, **kwargs) -> str:
             f"Количество частиц = {calculated_particles:.4f}×10²³",
             f"Объем (н.у.) = {calculated_volume:.4f} л"
         ])
-        
+
         return "\n".join(results)
-        
+
     except ValueError:
         return "Неверное числовое значение параметра"
     except Exception as e:
         return f"Ошибка расчета: {str(e)}"
 
+def classify_inorganic_substance(formula: str) -> str:
+    """
+    Классифицирует неорганическое вещество по его формуле.
+
+    Определяет: оксиды, кислоты, основания, амфотерные гидроксиды, соли, простые вещества.
+
+    Args:
+        formula: Химическая формула вещества
+
+    Returns:
+        Строка с классификацией вещества
+    """
+    try:
+        # Парсим формулу
+        parsed = parse_formula(formula)
+        f = parsed[0]['element']
+        oxident_st = get_oxidation_of_element(formula, f)
+        # 1. ПРОСТОЕ ВЕЩЕСТВО (один элемент)
+        if len(parsed) == 1:
+            element = parsed[0]['element']
+            if element in ELEMENTS:
+                return f"Простое вещество ({ELEMENTS[element]['Name_el']})"
+            return "Простое вещество"
+
+        # 2. ОКСИДЫ (соединение элемента с кислородом)
+        # Проверяем, есть ли кислород и только один другой элемент
+        elif len(parsed) == 2 and parsed[-1]['element'] == 'O':
+          return 'Оксид'
+
+        # 3. КИСЛОТЫ (начинаются с водорода и не являются пероксидами)
+        elif parsed[0]['element'] == 'H' or formula == 'CH3COOH':
+          return 'Кислота'
+
+        # 4. ОСНОВАНИЯ и ГИДРОКСИДЫ
+        # Ищем OH группы в формуле - они должны быть в конце и с правильной стехиометрией
+
+        elif (ELEMENTS[f]['metal'] == True) and  (parsed[-2]['element'] == 'O' and parsed[-1]['element'] == 'H'):
+          if (oxident_st == '+1' or oxident_st == '+2') or formula == 'NH4OH':
+            return 'Основание (гидроксид)'
+          elif (oxident_st == '+3' or oxident_st == '+4') or formula == 'Zn(OH)2' or formula == 'Be(OH)2':
+            return 'Амфотерный гидроксид'
+          ### Добавить определение степени окисления для всех элементов и нахождение первого
+
+        # 5. СОЛИ (соединения металлов с кислотными остатками)
+        elif ELEMENTS[f]['metal'] == True:
+          return 'Соль'
+
+        else:
+          return 'Элемент не классифицирован'
+    except Exception as e:
+        return f"Ошибка классификации: {str(e)}"
