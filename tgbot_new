@@ -17,7 +17,8 @@ button5 = types.KeyboardButton("Атомная структура")
 button6 = types.KeyboardButton("Электронная конфигурация")
 button7 = types.KeyboardButton("Степень окисления")
 button8 = types.KeyboardButton("Молярные расчеты")
-mm.add(button1, button2, button3, button4, button5, button6, button7, button8)
+button9 = types.KeyboardButton("Атомная доля")
+mm.add(button1, button2, button3, button4, button5, button6, button7, button8, button9)
 
 
 # Переменная для хранения состояния
@@ -63,7 +64,9 @@ def handle_buttons(message):
         elif message.text == "Валентность":
             msg = bot.send_message(chat_id, "Введите формулу из двух элементов (Например: Mn2O7):")
             bot.register_next_step_handler(msg, process_valence)
-
+        elif message.text == "Атомная доля":
+            msg = bot.send_message(message.chat.id, "Введите химическую формулу (Например: H20):")
+            bot.register_next_step_handler(msg, process_atomic_fraction)
         elif message.text == "Атомная структура":
             msg = bot.send_message(chat_id, "Введите формулу (Например: F2):")
             bot.register_next_step_handler(msg, process_atomic_structure)
