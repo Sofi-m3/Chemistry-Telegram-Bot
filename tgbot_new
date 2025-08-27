@@ -1,0 +1,179 @@
+# Импортируем модули
+import re
+import math
+import telebot
+from telebot import types
+
+# Токен тг бота
+bot = telebot.TeleBot('7608703327:AAGJLSJClBu67vEThRMOpzCW6QCGteWKPf8')
+
+# Создаем клавиатуру
+mm = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+button1 = types.KeyboardButton("Узнать информацию об элементе")
+button2 = types.KeyboardButton("Молекулярная масса")
+button3 = types.KeyboardButton("Классификация неорганических веществ")
+button4 = types.KeyboardButton("Валентность")
+button5 = types.KeyboardButton("Атомная структура")
+button6 = types.KeyboardButton("Электронная конфигурация")
+button7 = types.KeyboardButton("Степень окисления")
+button8 = types.KeyboardButton("Молярные расчеты")
+mm.add(button1, button2, button3, button4, button5, button6, button7, button8)
+
+
+# Переменная для хранения состояния
+user_states = {}
+
+# Обработчики сообщений для start
+@bot.message_handler(commands=['start'])
+def start_message(message):
+    bot.send_message(message.chat.id,
+                     "Привет ✌️ Я chemistry_bot и я могу помочь тебе с химией. Для этого выбери кнопку с той темой, которая тебя интересует, а потом введи формулу. Удачи!🍀",
+                     reply_markup=mm)
+
+@bot.message_handler(commands=['help'])
+def help_message(message):
+    help_text = """
+📚 Доступные функции:
+• Узнать информацию об элементе - данные о любом химическом элементе
+• Молекулярная масса - расчет массы соединения
+• Классификация неорганических веществ - определение типа вещества
+• Валентность - расчет валентности элементов
+• Атомная структура - протоны, нейтроны, электроны
+• Электронная конфигурация - распределение электронов
+• Степень окисления - расчет СО элементов
+• Молярные расчеты - моли, масса, объем, количество частиц
+
+"""
+    bot.send_message(message.chat.id, help_text, reply_markup=mm)
+
+# Обработка сообщений для команд
+@bot.message_handler(func=lambda message: True)
+def handle_buttons(message):
+    try:
+        chat_id = message.chat.id
+        
+        if message.text == "Молекулярная масса":
+            msg = bot.send_message(chat_id, "Введите химическую формулу (Например: H2O):")
+            bot.register_next_step_handler(msg, process_molecular_mass)
+
+        elif message.text == "Узнать информацию об элементе":
+            msg = bot.send_message(chat_id, "Введите символ или номер элемента (Например: Cl или 17):")
+            bot.register_next_step_handler(msg, process_element_info)
+
+        elif message.text == "Валентность":
+            msg = bot.send_message(chat_id, "Введите формулу из двух элементов (Например: Mn2O7):")
+            bot.register_next_step_handler(msg, process_valence)
+
+        elif message.text == "Атомная структура":
+            msg = bot.send_message(chat_id, "Введите формулу (Например: F2):")
+            bot.register_next_step_handler(msg, process_atomic_structure)
+
+        elif message.text == "Электронная конфигурация":
+            msg = bot.send_message(chat_id, "Введите символ элемента (Например: Cl):")
+            bot.register_next_step_handler(msg, process_electron_config)
+            
+        elif message.text == "Степень окисления":
+            msg = bot.send_message(chat_id, "Введите формулу (Наример: Fe2O3)")
+            bot.register_next_step_handler(msg, process_degree_of_oxidation_full)
+        elif message.text == "Молярные расчеты":
+            msg = bot.send_message(chat_id, "Введите формулу и параметр в формате:\n"
+                                           "• H2O v=5 (объем в литрах)\n"
+                                           "• CO2 m=10.5 (масса в граммах)\n" 
+                                           "• O2 N=3 (количество частиц ×10²³)\n"
+                                           "• NaCl mol=0.5 (количество вещества в молях)")
+            bot.register_next_step_handler(msg, process_molar_calculation)
+
+        elif message.text == "Классификация неорганических веществ":
+            msg = bot.send_message(chat_id, "Введите формулу вещества (Например: H2SO4):")
+            bot.register_next_step_handler(msg, process_classify_inorganic_substance)
+            
+        elif message.text == "Назад":
+            user_states.pop(chat_id, None)
+            bot.send_message(chat_id, "Главное меню:", reply_markup=mm)
+            
+        # Обработка выбора для степени окисления
+        elif chat_id in user_states and user_states[chat_id].get('action') == 'oxidation_choice':
+          msg = bot.send_message(chat_id, "Введите формулу (Например: Fe2O3):", reply_markup=types.ReplyKeyboardRemove())
+          bot.register_next_step_handler(msg, process_degree_of_oxidation_full)
+                
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Произошла ошибка :( {str(e)}")
+
+# Обработчики функций
+def process_element_info(message):
+    try:
+        result = get_element_info(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_molecular_mass(message):
+    try:
+        result = molecular_mass(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_valence(message):
+    try:
+        result = calculate_valency(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_atomic_structure(message):
+    try:
+        result = atomic_structure(message.text)
+        bot.send_message(message.chat.id, result)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_electron_config(message):
+    try:
+        result = electronic_configur(message.text)
+        bot.send_message(message.chat.id, f"Электронная конфигурация {message.text}: {result}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_degree_of_oxidation_full(message):
+    try:
+        result = calculate_oxidation_state(message.text)
+        bot.send_message(message.chat.id, f"Степени окисления для {message.text}:\n{result}")
+        user_states.pop(message.chat.id, None)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+def process_molar_calculation(message):
+    try:
+        # Парсим ввод пользователя
+        input_text = message.text
+        formula = None
+        params = {}
+
+        # Ищем параметры в формате ключ=значение
+        parts = re.split(r'\s+', input_text)
+        for part in parts:
+            if '=' in part:
+                key, value = part.split('=')
+                params[key.strip().lower()] = value.strip()
+            else:
+                formula = part.strip()
+
+        if not formula:
+            raise ValueError("Не указана формула")
+
+        result = calculate_moles(formula, **params)
+        bot.send_message(message.chat.id, f"Результаты для {formula}:\n{result}")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}\nПроверьте формат ввода!")
+
+def process_classify_inorganic_substance(message):
+    try:
+        result = classify_inorganic_substance(message.text)
+        bot.send_message(message.chat.id, f"Классификация {message.text}: {result}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка: {str(e)}")
+
+
+bot.polling(none_stop=True, interval=0)
