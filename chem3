@@ -839,3 +839,45 @@ def classify_inorganic_substance(formula: str) -> str:
           return 'Элемент не классифицирован'
     except Exception as e:
         return f"Ошибка классификации: {str(e)}"
+
+
+def get_oxidation_of_element(formula: str, element: str) -> str:
+    """
+    Простая и надежная функция для получения СО конкретного элемента.
+    
+    Args:
+        formula: Химическая формула
+        element: Символ элемента
+        
+    Returns:
+        Степень окисления элемента
+    """
+    try:
+        # Получаем полный расчет
+        result = calculate_oxidation_state(formula)
+        
+        # Если ошибка - возвращаем как есть
+        if "Ошибка" in result:
+            return result
+        
+        # Нормализуем элемент
+        element = element.upper().strip()
+        
+        # Ищем паттерн "Element: +number"
+        import re
+        pattern = rf"{re.escape(element)}:\s*([+-]?\d+\.?\d*/?\d*)"
+        match = re.search(pattern, result, re.IGNORECASE)
+        
+        if match:
+            return match.group(1).strip()
+        else:
+            # Пробуем другой формат
+            pattern2 = rf"{re.escape(element)}\s*([+-]?\d+\.?\d*/?\d*)"
+            match2 = re.search(pattern2, result, re.IGNORECASE)
+            if match2:
+                return match2.group(1).strip()
+        
+        return f"СО для {element} не найдена в: {result}"
+        
+    except Exception as e:
+        return f"Ошибка: {str(e)}"
